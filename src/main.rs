@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use image::{DynamicImage, ImageBuffer, RgbaImage};
+use image::{DynamicImage, ImageBuffer, ImageOutputFormat, RgbaImage};
 
 #[derive(Parser)]
 #[command(about = "Convert game texture formats to JPEG for preview")]
@@ -29,11 +29,18 @@ fn main() -> Result<()> {
         other => bail!("unsupported format: {other}"),
     };
 
-    image
-        .save(&args.output)
-        .with_context(|| format!("failed to write {}", args.output.display()))?;
+    write_preview(&image, &args.output)?;
 
     Ok(())
+}
+
+fn write_preview(image: &DynamicImage, path: &PathBuf) -> Result<()> {
+    let file = std::fs::File::create(path)
+        .with_context(|| format!("failed to create {}", path.display()))?;
+    let mut writer = std::io::BufWriter::new(file);
+    image
+        .write_to(&mut writer, ImageOutputFormat::Jpeg(90))
+        .with_context(|| format!("failed to write {}", path.display()))
 }
 
 fn decode_blp(path: &PathBuf) -> Result<DynamicImage> {
@@ -155,5 +162,27 @@ fn decode_ktx2_pixels(
                 decode_block_compressed(format, data, width as usize, height as usize)?;
             Ok(bgra_u32_to_rgba_u8(&buf))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::write_preview;
+    use image::DynamicImage;
+
+    #[test]
+    fn writes_jpeg_without_output_extension() {
+        let path = std::env::temp_dir().join(format!(
+            "texture-preview-test-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&path);
+
+        write_preview(&DynamicImage::new_rgba8(1, 1), &path).unwrap();
+
+        let bytes = std::fs::read(&path).unwrap();
+        assert!(bytes.starts_with(&[0xFF, 0xD8]));
+
+        let _ = std::fs::remove_file(path);
     }
 }
