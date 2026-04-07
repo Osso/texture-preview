@@ -158,8 +158,7 @@ fn decode_ktx2_pixels(
             Ok(decode_uncompressed_rgb(data, pixel_count))
         }
         _ => {
-            let buf =
-                decode_block_compressed(format, data, width as usize, height as usize)?;
+            let buf = decode_block_compressed(format, data, width as usize, height as usize)?;
             Ok(bgra_u32_to_rgba_u8(&buf))
         }
     }
@@ -172,10 +171,8 @@ mod tests {
 
     #[test]
     fn writes_jpeg_without_output_extension() {
-        let path = std::env::temp_dir().join(format!(
-            "texture-preview-test-{}",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("texture-preview-test-{}", std::process::id()));
         let _ = std::fs::remove_file(&path);
 
         write_preview(&DynamicImage::new_rgba8(1, 1), &path).unwrap();
